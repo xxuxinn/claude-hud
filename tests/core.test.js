@@ -1931,6 +1931,63 @@ test('countConfigs tolerates rule directory read errors', async () => {
   }
 });
 
+test('countConfigs follows symlinked rule files and directories safely', async () => {
+  const homeDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-home-'));
+  const projectDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-project-'));
+  const sharedDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-rules-'));
+  const originalHome = process.env.HOME;
+  process.env.HOME = homeDir;
+
+  try {
+    const rulesDir = path.join(projectDir, '.claude', 'rules');
+    await mkdir(rulesDir, { recursive: true });
+    await writeFile(path.join(sharedDir, 'shared.md'), '# shared', 'utf8');
+    await writeFile(path.join(sharedDir, 'direct.md'), '# direct', 'utf8');
+    fs.symlinkSync(sharedDir, path.join(rulesDir, 'pack'), 'dir');
+    fs.symlinkSync(path.join(sharedDir, 'direct.md'), path.join(rulesDir, 'linked.md'), 'file');
+
+    const counts = await countConfigs(projectDir);
+    assert.equal(counts.rulesCount, 2);
+
+    const statBefore = fs.statSync(sharedDir);
+    await writeFile(path.join(sharedDir, 'added.md'), '# added', 'utf8');
+    fs.utimesSync(sharedDir, statBefore.atimeMs / 1000 + 1, statBefore.mtimeMs / 1000 + 1);
+    const updated = await countConfigs(projectDir);
+    assert.equal(updated.rulesCount, 3, 'cache should invalidate when a symlink target changes');
+  } finally {
+    process.env.HOME = originalHome;
+    await rm(homeDir, { recursive: true, force: true });
+    await rm(projectDir, { recursive: true, force: true });
+    await rm(sharedDir, { recursive: true, force: true });
+  }
+});
+
+test('countConfigs skips dangling links, cycles, and duplicate symlink targets', async () => {
+  const homeDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-home-'));
+  const projectDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-project-'));
+  const sharedDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-rules-'));
+  const originalHome = process.env.HOME;
+  process.env.HOME = homeDir;
+
+  try {
+    const rulesDir = path.join(projectDir, '.claude', 'rules');
+    await mkdir(rulesDir, { recursive: true });
+    await writeFile(path.join(sharedDir, 'one.md'), '# one', 'utf8');
+    fs.symlinkSync(sharedDir, path.join(rulesDir, 'pack-a'), 'dir');
+    fs.symlinkSync(sharedDir, path.join(rulesDir, 'pack-b'), 'dir');
+    fs.symlinkSync(rulesDir, path.join(sharedDir, 'cycle'), 'dir');
+    fs.symlinkSync(path.join(sharedDir, 'missing.md'), path.join(rulesDir, 'dangling.md'), 'file');
+
+    const counts = await countConfigs(projectDir);
+    assert.equal(counts.rulesCount, 1);
+  } finally {
+    process.env.HOME = originalHome;
+    await rm(homeDir, { recursive: true, force: true });
+    await rm(projectDir, { recursive: true, force: true });
+    await rm(sharedDir, { recursive: true, force: true });
+  }
+});
+
 test('countConfigs ignores non-string values in disabledMcpServers', async () => {
   const homeDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-home-'));
   const originalHome = process.env.HOME;

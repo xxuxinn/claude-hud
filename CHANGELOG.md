@@ -4,6 +4,10 @@ All notable changes to Claude HUD will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Show cache creation and cache read tokens in compact session-token summaries (#653).
+- Count symlinked rule files and directories with cycle-safe, bounded traversal and cache invalidation (#644).
+
 ## [0.3.0] - 2026-06-19
 
 ### Added

@@ -15,6 +15,7 @@ import { formatTokens, formatContextValue } from '../utils/format.js';
 import { formatAuthSegment } from '../auth.js';
 import { createDebug } from '../debug.js';
 import { formatModelDisplay } from './model-display.js';
+import { formatSessionTokenSummary } from './lines/session-tokens.js';
 
 const debug = createDebug('session-line');
 
@@ -274,10 +275,9 @@ export function renderSessionLine(ctx: RenderContext): string {
 
   // Session token usage (cumulative)
   if (display?.showSessionTokens && ctx.transcript.sessionTokens) {
-    const st = ctx.transcript.sessionTokens;
-    const total = st.inputTokens + st.outputTokens + st.cacheCreationTokens + st.cacheReadTokens;
-    if (total > 0) {
-      parts.push(label(`${t('format.tok')}: ${formatTokens(total)} (${t('format.in')}: ${formatTokens(st.inputTokens)}, ${t('format.out')}: ${formatTokens(st.outputTokens)})`, colors));
+    const summary = formatSessionTokenSummary(ctx.transcript.sessionTokens, `${t('format.tok')}:`);
+    if (summary) {
+      parts.push(label(summary, colors));
     }
   }
 
