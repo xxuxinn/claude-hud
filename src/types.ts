@@ -142,6 +142,11 @@ export interface TranscriptData {
   // (`ultra_effort_enter`/`ultra_effort_exit` attachment or `/effort` output).
   // undefined when ultracode was never entered this session.
   ultracodeActive?: boolean;
+  // Model ID from the most recent assistant message's `message.model` field.
+  // This reflects what the API actually served — may differ from stdin.model
+  // when a proxy (e.g. cc-switch) routes to a different model. Transcript
+  // parsing sanitizes terminal controls and caps the retained value at 80 chars.
+  lastAssistantModel?: string;
 }
 
 export interface RenderContext {

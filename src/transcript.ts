@@ -7,6 +7,7 @@ import { getHudPluginDir } from './claude-config-dir.js';
 import { createDebug } from './debug.js';
 import type { TranscriptData, ToolEntry, AgentEntry, TodoItem, SessionTokenUsage } from './types.js';
 import { sanitizeDisplayText } from './utils/sanitize.js';
+import { sanitizeTranscriptModel } from './model-source.js';
 
 const debug = createDebug('transcript');
 
@@ -26,6 +27,7 @@ interface TranscriptLine {
     // Usually an array of content blocks, but slash-command records (e.g.
     // `/effort`) store their output as a raw string.
     content?: ContentBlock[] | string;
+    model?: unknown;
     usage?: {
       input_tokens?: number;
       output_tokens?: number;
@@ -85,6 +87,7 @@ interface SerializedTranscriptData {
   compactionCount?: number;
   advisorModel?: string;
   ultracodeActive?: boolean;
+  lastAssistantModel?: string;
 }
 
 interface TranscriptCacheFile {
@@ -94,7 +97,7 @@ interface TranscriptCacheFile {
   data: SerializedTranscriptData;
 }
 
-const TRANSCRIPT_CACHE_VERSION = 11;
+const TRANSCRIPT_CACHE_VERSION = 12;
 const MCP_TOOL_NAME_PATTERN = /^mcp__(.+?)__(.+)$/;
 const ACTIVITY_NAME_MAX_LEN = 64;
 const MESSAGE_ID_MAX_LEN = 128;
@@ -238,6 +241,7 @@ function serializeTranscriptData(data: TranscriptData): SerializedTranscriptData
     compactionCount: data.compactionCount,
     advisorModel: data.advisorModel,
     ultracodeActive: data.ultracodeActive,
+    lastAssistantModel: sanitizeTranscriptModel(data.lastAssistantModel),
   };
 }
 
@@ -269,6 +273,7 @@ function deserializeTranscriptData(data: SerializedTranscriptData): TranscriptDa
       ? data.advisorModel.slice(0, ADVISOR_MODEL_MAX_LEN)
       : undefined,
     ultracodeActive: typeof data.ultracodeActive === 'boolean' ? data.ultracodeActive : undefined,
+    lastAssistantModel: sanitizeTranscriptModel(data.lastAssistantModel),
   };
 }
 
@@ -430,6 +435,15 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
           );
           if (effortCommandMatch) {
             latestUltracodeActive = effortCommandMatch[1].toLowerCase() === 'ultracode';
+          }
+        }
+        // Capture the actual model from the assistant message's `model` field.
+        // This reflects what the API actually served, which may differ from the
+        // model Claude Code thinks it's using (e.g. proxy redirect via cc-switch).
+        if (entry.type === 'assistant') {
+          const transcriptModel = sanitizeTranscriptModel(entry.message?.model);
+          if (transcriptModel) {
+            result.lastAssistantModel = transcriptModel;
           }
         }
         // Accumulate token usage from assistant messages.
