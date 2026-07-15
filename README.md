@@ -6,6 +6,8 @@
 >
 > Deploy on a new device: `/plugin marketplace add xxuxinn/claude-hud` → `/plugin install claude-hud@claude-hud`. If your statusline uses `--extra-cmd`, set `CLAUDE_HUD_ALLOW_EXTRA_CMD=1` inside the statusline command.
 > Sync with upstream: `git remote add upstream https://github.com/jarrodwatts/claude-hud.git`, `git pull upstream main`, then `npm test`.
+>
+> **Full instructions — history, per-device install steps, and the upstream-merge procedure: [FORK-GUIDE.md](FORK-GUIDE.md).**
 
 A Claude Code plugin that shows what's happening — context usage, active tools, running agents, and todo progress. Always visible below your input.
 

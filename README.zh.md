@@ -1,6 +1,6 @@
 # Claude HUD
 
-> **[jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud) 的个人 fork。** 与上游的三处差异：(1) 会话 token 统计显示在第一行末尾，而非单独一行；(2) 默认将 `environment` + `tools` 合并为一行；(3) 默认开启完整显示（config counts、speed、tools、agents、todos、session name、session tokens），新设备安装后零配置即为完整 HUD。详见英文 README 顶部说明。
+> **[jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud) 的个人 fork。** 与上游的三处差异：(1) 会话 token 统计显示在第一行末尾，而非单独一行；(2) 默认将 `environment` + `tools` 合并为一行；(3) 默认开启完整显示（config counts、speed、tools、agents、todos、session name、session tokens），新设备安装后零配置即为完整 HUD。完整说明（改动历史、新设备安装步骤、上游版本合并流程）见 [FORK-GUIDE.md](FORK-GUIDE.md)（英文）。
 
 [![License](https://img.shields.io/github/license/jarrodwatts/claude-hud?v=2)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/jarrodwatts/claude-hud)](https://github.com/jarrodwatts/claude-hud/stargazers)
