@@ -94,10 +94,10 @@ test('getConfigPath returns correct path', () => {
   }
 });
 
-test('mergeConfig defaults showSessionName to false', () => {
+test('mergeConfig defaults showSessionName to true', () => {
   const config = mergeConfig({});
-  assert.equal(config.display.showSessionName, false);
-  assert.equal(DEFAULT_CONFIG.display.showSessionName, false);
+  assert.equal(config.display.showSessionName, true);
+  assert.equal(DEFAULT_CONFIG.display.showSessionName, true);
 });
 
 test('mergeConfig defaults forceMaxWidth to false', () => {

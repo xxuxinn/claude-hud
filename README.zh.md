@@ -1,6 +1,6 @@
 # Claude HUD
 
-一个 Claude Code 插件，实时显示正在发生的事情——上下文使用率、活跃工具、运行中的 Agent 和待办进度。始终在你的输入下方可见。
+> **[jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud) 的个人 fork。** 与上游的三处差异：(1) 会话 token 统计显示在第一行末尾，而非单独一行；(2) 默认将 `environment` + `tools` 合并为一行；(3) 默认开启完整显示（config counts、speed、tools、agents、todos、session name、session tokens），新设备安装后零配置即为完整 HUD。详见英文 README 顶部说明。
 
 [![License](https://img.shields.io/github/license/jarrodwatts/claude-hud?v=2)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/jarrodwatts/claude-hud)](https://github.com/jarrodwatts/claude-hud/stargazers)

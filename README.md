@@ -1,5 +1,12 @@
 # Claude HUD
 
+> **Personal fork of [jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud).**
+> **Technical:** diverges from upstream in three ways: (1) session token stats (`Tokens X (in/out/cache)`) render at the end of the first identity line instead of as a separate bottom line (`src/render/index.ts`); (2) `DEFAULT_MERGE_GROUPS` also merges `environment` + `tools` onto one line (`src/config.ts`); (3) display defaults flipped on: `showConfigCounts`, `showSpeed`, `showTools`, `showAgents`, `showTodos`, `showSessionName`, `showSessionTokens` — a fresh install renders the full HUD with zero config.
+> **In plain terms:** this copy moves the token counter up to the top row, lets the config-counts and tool-activity rows share one line, and turns the full display on out of the box — so installing it on a new machine looks right immediately, no settings needed.
+>
+> Deploy on a new device: `/plugin marketplace add xxuxinn/claude-hud` → `/plugin install claude-hud@claude-hud`. If your statusline uses `--extra-cmd`, set `CLAUDE_HUD_ALLOW_EXTRA_CMD=1` inside the statusline command.
+> Sync with upstream: `git remote add upstream https://github.com/jarrodwatts/claude-hud.git`, `git pull upstream main`, then `npm test`.
+
 A Claude Code plugin that shows what's happening — context usage, active tools, running agents, and todo progress. Always visible below your input.
 
 [![License](https://img.shields.io/github/license/jarrodwatts/claude-hud?v=2)](LICENSE)
