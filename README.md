@@ -1,7 +1,7 @@
 # Claude HUD
 
 > **Personal fork of [jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud).**
-> **Technical:** diverges from upstream in three ways: (1) session token stats (`Tokens X (in/out/cache)`) render at the end of the first identity line instead of as a separate bottom line (`src/render/index.ts`); (2) `DEFAULT_MERGE_GROUPS` also merges `environment` + `tools` onto one line (`src/config.ts`); (3) display defaults flipped on: `showTools`, `showAgents`, `showTodos`, `showSessionName` — a fresh install renders the activity lines with zero config, while `showConfigCounts`, `showSpeed` and `showSessionTokens` stay off so the identity line ends at the `--extra-cmd` label (since 2026-09-02; the `Tokens …` segment from (1) only appears if you turn `showSessionTokens` on).
+> **Technical:** diverges from upstream in three ways: (1) session token stats (`Tokens X (in/out/cache)`) render at the end of the first identity line instead of as a separate bottom line (`src/render/index.ts`); (2) `DEFAULT_MERGE_GROUPS` also merges `environment` + `tools` onto one line (`src/config.ts`); (3) display defaults flipped on: `showTools`, `showAgents`, `showTodos` — a fresh install renders the activity lines with zero config, while `showSessionName`, `showConfigCounts`, `showSpeed` and `showSessionTokens` stay off so the identity line ends at the `--extra-cmd` label with no session name (since 2026-09-02; the `Tokens …` segment from (1) only appears if you turn `showSessionTokens` on).
 > **In plain terms:** this copy keeps the top row short (model, folder, branch, then the clock/style label — no token totals, counts or speed), lets the config-counts and tool-activity rows share one line when counts are switched on, and shows the tool/agent/todo activity rows out of the box — so installing it on a new machine looks right immediately, no settings needed.
 >
 > Deploy on a new device: `/plugin marketplace add xxuxinn/claude-hud` → `/plugin install claude-hud@claude-hud`. If your statusline uses `--extra-cmd`, set `CLAUDE_HUD_ALLOW_EXTRA_CMD=1` inside the statusline command.
@@ -212,7 +212,7 @@ Simplified and Traditional Chinese HUD labels are available as explicit opt-ins.
 | `display.toolsMaxVisible` | number | `4` | Maximum completed tools shown on the tools line. `0` means unlimited |
 | `display.showAgents` | boolean | true | Show agents activity line (fork default; upstream: false) |
 | `display.showTodos` | boolean | true | Show todos progress line (fork default; upstream: false) |
-| `display.showSessionName` | boolean | true | Show session slug or custom title from `/rename` (fork default; upstream: false) |
+| `display.showSessionName` | boolean | false | Show session slug or custom title from `/rename` |
 | `display.showAuth` | boolean | false | Show the auth method (subscription plan) of the current login as its own segment at the end of the first line, e.g. `Claude Max 20x`. Derived from the `oauthAccount` block in `{CLAUDE_CONFIG_DIR}.json`; shows `API Key` when there is no OAuth login but `ANTHROPIC_API_KEY` is set |
 | `display.showAuthUser` | boolean | false | Show the logged-in account (email local part, falling back to profile display name) next to the auth method |
 | `display.authUserLength` | number | `8` | Maximum characters of the account name to display before truncating with `…`. `0` shows the full name |

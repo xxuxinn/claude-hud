@@ -6,7 +6,7 @@ pull in upstream releases without losing the customizations.
 - **Fork:** https://github.com/xxuxinn/claude-hud
 - **Upstream:** https://github.com/jarrodwatts/claude-hud (MIT license)
 - **Forked at:** upstream `0.4.2`, first fork commit `8ddb2df` (2026-07-15)
-- **Fork version:** `0.4.3` (upstream `0.4.2` + one fork-only patch bump, 2026-09-02) — see Step 5 below for why the number must move.
+- **Fork version:** `0.4.4` (upstream `0.4.2` + two fork-only patch bumps, both 2026-09-02) — see Step 5 below for why the number must move.
 
 ---
 
@@ -23,11 +23,11 @@ settings file needed.
 |---|--------|------|--------|
 | 1 | Session tokens on line 1 | `src/render/index.ts` | In `render()`'s expanded branch, the `Tokens X (in/out/cache)` segment is joined onto `lines[0]` (the `[model] │ project git │ …` identity line) with a ` │ ` separator, instead of `lines.push(...)` at the bottom. Falls back to its own line only if no other lines rendered. |
 | 2 | Counts + tools share a line | `src/config.ts` | `DEFAULT_MERGE_GROUPS` gains `['environment', 'tools']`, so the `2 CLAUDE.md \| 23 rules \| …` line and the `✓ Bash ×12 \| ✓ Edit ×4 …` line merge when they fit the terminal width (they stack automatically when too narrow — upstream's `canCombine` logic handles this). |
-| 3 | Activity lines on by default | `src/config.ts` | Four `DEFAULT_CONFIG.display` toggles flipped `false → true`: `showTools`, `showAgents`, `showTodos`, `showSessionName`. `showConfigCounts`, `showSpeed` and `showSessionTokens` stay at upstream's `false` (they were flipped `true` on 2026-07-15 and reverted on 2026-09-02 so the identity line ends at the clock/style label — no counts, speed or token totals on row 1). A device with **no** `config.json` renders the slim identity line plus the activity lines. A local `config.json` still overrides everything, as upstream designed. |
+| 3 | Activity lines on by default | `src/config.ts` | Three `DEFAULT_CONFIG.display` toggles flipped `false → true`: `showTools`, `showAgents`, `showTodos`. `showSessionName`, `showConfigCounts`, `showSpeed` and `showSessionTokens` stay at upstream's `false` (all four were flipped `true` on 2026-07-15 and reverted on 2026-09-02 — counts, speed and tokens in 0.4.3, the session name in 0.4.4 — so the identity line ends at the clock/style label with no session slug or `/rename` title on row 1). A device with **no** `config.json` renders the slim identity line plus the activity lines. A local `config.json` still overrides everything, as upstream designed. |
 
 Test suite adjustments that ride along (they assert the new intended behavior):
 
-- `tests/config.test.js` — the `showSessionName` default assertion flipped to `true`.
+- `tests/config.test.js` — the `showSessionName` default assertion was flipped to `true` in 0.4.3 and back to `false` in 0.4.4, so it matches upstream again.
 - `tests/fixtures/expected/render-basic.txt` — integration snapshot regenerated via
   `npm run test:update-snapshots`.
 
@@ -203,8 +203,8 @@ Only three regions can conflict, matching the three changes in section 1:
    }
    ```
 2. **`src/config.ts`** — keep `['environment', 'tools']` in `DEFAULT_MERGE_GROUPS`
-   and the four `true` display defaults (`showTools`, `showAgents`, `showTodos`,
-   `showSessionName`), adopt everything else from upstream.
+   and the three `true` display defaults (`showTools`, `showAgents`, `showTodos`),
+   adopt everything else from upstream.
 3. **`dist/*` and the snapshot** — never hand-merge compiled output. Take either
    side (`git checkout --theirs dist/`), finish the merge, then regenerate:
    the build in the next step overwrites `dist/` correctly.

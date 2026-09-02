@@ -4,6 +4,11 @@ All notable changes to Claude HUD will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-09-02 (fork only)
+
+### Changed
+- `showSessionName` defaults to `false` again (upstream's default), so the identity line no longer shows the session slug or `/rename` title. `showTools`, `showAgents`, `showTodos` stay on. Fork version bumped so `claude plugin update` picks the change up; upstream is still 0.4.2.
+
 ## [0.4.3] - 2026-09-02 (fork only)
 
 ### Changed

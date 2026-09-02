@@ -66,7 +66,7 @@ export const DEFAULT_CONFIG = {
         toolsMaxVisible: 4,
         showAgents: true,
         showTodos: true,
-        showSessionName: true,
+        showSessionName: false,
         showAuth: false,
         showAuthUser: false,
         authUserLength: 8,
