@@ -6,6 +6,7 @@ pull in upstream releases without losing the customizations.
 - **Fork:** https://github.com/xxuxinn/claude-hud
 - **Upstream:** https://github.com/jarrodwatts/claude-hud (MIT license)
 - **Forked at:** upstream `0.4.2`, first fork commit `8ddb2df` (2026-07-15)
+- **Fork version:** `0.4.3` (upstream `0.4.2` + one fork-only patch bump, 2026-09-02) — see Step 5 below for why the number must move.
 
 ---
 
@@ -231,7 +232,20 @@ Check: line 1 ends at the `🕐 … | style: …` label (no `Tokens`, counts or 
 git add -A && git commit -m "chore: merge upstream vX.Y.Z" && git push origin main
 ```
 
-On each device: `claude plugin update claude-hud`, then restart Claude Code.
+On each device: `claude plugin marketplace update claude-hud`, then
+`claude plugin update claude-hud@claude-hud`, then restart Claude Code.
+
+**Technical:** `claude plugin update` compares the marketplace's version string with
+the installed one and does nothing when they match ("already at the latest version"),
+even if `main` moved. So every fork-only change that should reach the devices needs a
+patch bump in all four places: `package.json`, `package-lock.json` (two occurrences),
+`.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`. When merging an
+upstream release, take upstream's version if it is higher than the fork's, otherwise
+bump the fork's patch once more. The statusline command only recognises plain
+`X.Y.Z` directory names, so never use a suffix like `0.4.2-fork.1`.
+
+**In plain terms:** the updater looks at the version label, not the contents. If the
+label is unchanged it assumes nothing happened. Give every real change a new label.
 If upstream's new version changed statusline requirements (like 0.4.x's
 `CLAUDE_HUD_ALLOW_EXTRA_CMD` gate did), read their CHANGELOG for the migration
 note and adjust `settings.json` accordingly.

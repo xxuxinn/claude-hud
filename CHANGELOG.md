@@ -4,6 +4,11 @@ All notable changes to Claude HUD will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-02 (fork only)
+
+### Changed
+- Identity line is slim by default: `showConfigCounts`, `showSpeed` and `showSessionTokens` default to `false` again, so row 1 ends at the `--extra-cmd` label (clock + output style). `showTools`, `showAgents`, `showTodos`, `showSessionName` stay on. Fork version bumped so `claude plugin update` picks the change up; upstream is still 0.4.2.
+
 ## [0.4.2] - 2026-07-15
 
 ### Fixed
