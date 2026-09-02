@@ -22,7 +22,7 @@ settings file needed.
 |---|--------|------|--------|
 | 1 | Session tokens on line 1 | `src/render/index.ts` | In `render()`'s expanded branch, the `Tokens X (in/out/cache)` segment is joined onto `lines[0]` (the `[model] │ project git │ …` identity line) with a ` │ ` separator, instead of `lines.push(...)` at the bottom. Falls back to its own line only if no other lines rendered. |
 | 2 | Counts + tools share a line | `src/config.ts` | `DEFAULT_MERGE_GROUPS` gains `['environment', 'tools']`, so the `2 CLAUDE.md \| 23 rules \| …` line and the `✓ Bash ×12 \| ✓ Edit ×4 …` line merge when they fit the terminal width (they stack automatically when too narrow — upstream's `canCombine` logic handles this). |
-| 3 | Full display by default | `src/config.ts` | Seven `DEFAULT_CONFIG.display` toggles flipped `false → true`: `showConfigCounts`, `showSpeed`, `showTools`, `showAgents`, `showTodos`, `showSessionName`, `showSessionTokens`. A device with **no** `config.json` now renders the complete HUD. A local `config.json` still overrides everything, as upstream designed. |
+| 3 | Activity lines on by default | `src/config.ts` | Four `DEFAULT_CONFIG.display` toggles flipped `false → true`: `showTools`, `showAgents`, `showTodos`, `showSessionName`. `showConfigCounts`, `showSpeed` and `showSessionTokens` stay at upstream's `false` (they were flipped `true` on 2026-07-15 and reverted on 2026-09-02 so the identity line ends at the clock/style label — no counts, speed or token totals on row 1). A device with **no** `config.json` renders the slim identity line plus the activity lines. A local `config.json` still overrides everything, as upstream designed. |
 
 Test suite adjustments that ride along (they assert the new intended behavior):
 
@@ -76,11 +76,40 @@ Save as `~/.claude/statusline-clock.sh` and `chmod +x` it:
 
 ```bash
 #!/usr/bin/env bash
-# claude-hud extra-cmd helper: emits the current wall-clock time as a HUD label.
-# Wired via the statusLine `--extra-cmd` arg in settings.json; renders on the first
-# (project) row after the git branch. Replaces the session-duration element
-# (display.showDuration:false). Output must be JSON: {"label":"..."}.
-printf '{"label":"🕐 %s"}\n' "$(date +"%Y-%m-%d %H:%M")"
+# claude-hud extra-cmd helper: emits the wall-clock time plus the active output
+# style as one HUD label, e.g.  🕐 2026-09-02 18:05 | style: Concise
+# Wired via the statusLine `--extra-cmd` arg in settings.json; the plugin renders
+# this label on the first (project) row after the git branch / session name.
+# Replaces the session-duration element (display.showDuration:false).
+# Output must be JSON: {"label":"..."}; the plugin truncates labels over 50 chars.
+#
+# Output style resolution mirrors claude-hud's config-reader (later wins):
+#   user settings.json -> user settings.local.json
+#   -> <cwd>/.claude/settings.json -> <cwd>/.claude/settings.local.json
+
+claude_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+
+read_style() {
+  local file="$1"
+  [ -r "$file" ] || return 0
+  jq -r '.outputStyle // empty' "$file" 2>/dev/null
+}
+
+style=""
+for f in "$claude_dir/settings.json" "$claude_dir/settings.local.json" \
+         "$PWD/.claude/settings.json" "$PWD/.claude/settings.local.json"; do
+  candidate="$(read_style "$f")"
+  [ -n "$candidate" ] && style="$candidate"
+done
+
+now="$(date +"%Y-%m-%d %H:%M")"
+if [ -n "$style" ]; then
+  label="🕐 $now | style: $style"
+else
+  label="🕐 $now"
+fi
+
+jq -cn --arg label "$label" '{label: $label}'
 ```
 
 ### Step 4 — Wire the statusline
@@ -111,7 +140,7 @@ Forget the switch and everything works except the clock silently vanishes.
 Restart Claude Code. The first HUD line should look like:
 
 ```
-[Fable 5] │ my-project git:(main) │ 🕐 2026-07-15 08:41 │ Tokens 6.2M (in: 110, out: 41k, cache: 6.1M)
+[Fable 5] │ my-project git:(main) │ 🕐 2026-09-02 18:41 | style: Concise
 ```
 
 No `config.json` is needed — the fork's defaults already produce this layout. Only
@@ -173,7 +202,8 @@ Only three regions can conflict, matching the three changes in section 1:
    }
    ```
 2. **`src/config.ts`** — keep `['environment', 'tools']` in `DEFAULT_MERGE_GROUPS`
-   and the seven `true` display defaults, adopt everything else from upstream.
+   and the four `true` display defaults (`showTools`, `showAgents`, `showTodos`,
+   `showSessionName`), adopt everything else from upstream.
 3. **`dist/*` and the snapshot** — never hand-merge compiled output. Take either
    side (`git checkout --theirs dist/`), finish the merge, then regenerate:
    the build in the next step overwrites `dist/` correctly.
@@ -193,7 +223,7 @@ echo '{"model":{"display_name":"Test"},"transcript_path":"/path/to/some-session.
   | CLAUDE_HUD_ALLOW_EXTRA_CMD=1 COLUMNS=200 node dist/index.js
 ```
 
-Check: tokens on line 1, counts+tools merged.
+Check: line 1 ends at the `🕐 … | style: …` label (no `Tokens`, counts or `tok/s` after it); tools/agents/todos rows appear when there is activity.
 
 ### Step 5 — Push and roll out to devices
 

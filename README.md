@@ -1,8 +1,8 @@
 # Claude HUD
 
 > **Personal fork of [jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud).**
-> **Technical:** diverges from upstream in three ways: (1) session token stats (`Tokens X (in/out/cache)`) render at the end of the first identity line instead of as a separate bottom line (`src/render/index.ts`); (2) `DEFAULT_MERGE_GROUPS` also merges `environment` + `tools` onto one line (`src/config.ts`); (3) display defaults flipped on: `showConfigCounts`, `showSpeed`, `showTools`, `showAgents`, `showTodos`, `showSessionName`, `showSessionTokens` — a fresh install renders the full HUD with zero config.
-> **In plain terms:** this copy moves the token counter up to the top row, lets the config-counts and tool-activity rows share one line, and turns the full display on out of the box — so installing it on a new machine looks right immediately, no settings needed.
+> **Technical:** diverges from upstream in three ways: (1) session token stats (`Tokens X (in/out/cache)`) render at the end of the first identity line instead of as a separate bottom line (`src/render/index.ts`); (2) `DEFAULT_MERGE_GROUPS` also merges `environment` + `tools` onto one line (`src/config.ts`); (3) display defaults flipped on: `showTools`, `showAgents`, `showTodos`, `showSessionName` — a fresh install renders the activity lines with zero config, while `showConfigCounts`, `showSpeed` and `showSessionTokens` stay off so the identity line ends at the `--extra-cmd` label (since 2026-09-02; the `Tokens …` segment from (1) only appears if you turn `showSessionTokens` on).
+> **In plain terms:** this copy keeps the top row short (model, folder, branch, then the clock/style label — no token totals, counts or speed), lets the config-counts and tool-activity rows share one line when counts are switched on, and shows the tool/agent/todo activity rows out of the box — so installing it on a new machine looks right immediately, no settings needed.
 >
 > Deploy on a new device: `/plugin marketplace add xxuxinn/claude-hud` → `/plugin install claude-hud@claude-hud`. If your statusline uses `--extra-cmd`, set `CLAUDE_HUD_ALLOW_EXTRA_CMD=1` inside the statusline command.
 > Sync with upstream: `git remote add upstream https://github.com/jarrodwatts/claude-hud.git`, `git pull upstream main`, then `npm test`.
@@ -205,14 +205,14 @@ Simplified and Traditional Chinese HUD labels are available as explicit opt-ins.
 | `display.externalUsageWritePath` | string | `""` | Optional absolute `.json` path in an existing directory. When stdin `rate_limits` exists, ClaudeHUD writes a private snapshot for other local tools. Relative paths, non-json files, and missing parent directories are ignored |
 | `display.externalUsageFreshnessMs` | number | `300000` | Maximum allowed age for the external usage snapshot before it is ignored |
 | `display.showTokenBreakdown` | boolean | true | Show token details at high context (85%+) |
-| `display.showTools` | boolean | false | Show tools activity line |
+| `display.showTools` | boolean | true | Show tools activity line (fork default; upstream: false) |
 | `display.showSkills` | boolean | false | Show active Skills detected from `Skill` tool invocations |
 | `display.showMcp` | boolean | false | Show active MCP servers detected from `mcp__server__tool` invocations |
 | `display.toolNameMaxLength` | number | `0` | Maximum displayed tool-name length. `0` keeps full names; MCP names may shorten to their final segment when truncating |
 | `display.toolsMaxVisible` | number | `4` | Maximum completed tools shown on the tools line. `0` means unlimited |
-| `display.showAgents` | boolean | false | Show agents activity line |
-| `display.showTodos` | boolean | false | Show todos progress line |
-| `display.showSessionName` | boolean | false | Show session slug or custom title from `/rename` |
+| `display.showAgents` | boolean | true | Show agents activity line (fork default; upstream: false) |
+| `display.showTodos` | boolean | true | Show todos progress line (fork default; upstream: false) |
+| `display.showSessionName` | boolean | true | Show session slug or custom title from `/rename` (fork default; upstream: false) |
 | `display.showAuth` | boolean | false | Show the auth method (subscription plan) of the current login as its own segment at the end of the first line, e.g. `Claude Max 20x`. Derived from the `oauthAccount` block in `{CLAUDE_CONFIG_DIR}.json`; shows `API Key` when there is no OAuth login but `ANTHROPIC_API_KEY` is set |
 | `display.showAuthUser` | boolean | false | Show the logged-in account (email local part, falling back to profile display name) next to the auth method |
 | `display.authUserLength` | number | `8` | Maximum characters of the account name to display before truncating with `…`. `0` shows the full name |
@@ -398,7 +398,7 @@ Leaving it unset (or setting an explicit negative: `0`, `false`, `off`, `no`) ke
 - Check `gitStatus.enabled` is not `false` in config
 
 **Tool/skill/MCP/agent/todo lines missing?**
-- These are hidden by default — enable with `showTools`, `showSkills`, `showMcp`, `showAgents`, `showTodos` in config
+- This fork shows tools, agents and todos by default; skills and MCP lines still need `showSkills` / `showMcp` in config (upstream hides all five by default)
 - They also only appear when there's activity to show
 
 **HUD not appearing after setup?**
