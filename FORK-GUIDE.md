@@ -6,7 +6,8 @@ pull in upstream releases without losing the customizations.
 - **Fork:** https://github.com/xxuxinn/claude-hud
 - **Upstream:** https://github.com/jarrodwatts/claude-hud (MIT license)
 - **Forked at:** upstream `0.4.2`, first fork commit `8ddb2df` (2026-07-15)
-- **Fork version:** `0.4.4` (upstream `0.4.2` + two fork-only patch bumps, both 2026-09-02) — see Step 5 below for why the number must move.
+- **Fork version:** `0.8.0` (follows upstream's version since the 2026-09-23 merge; before that `0.4.4` = upstream `0.4.2` + two fork-only patch bumps, both 2026-09-02) — see Step 5 below for why the number must move.
+- **Last upstream merge:** 2026-09-23, upstream `main` at 0.8.0 plus unreleased fixes (merge commit `chore: merge upstream v0.8.0`). One upstream test fails on both upstream and the fork: `estimateSessionCost prices Claude 5 point releases like their base model` (`tests/cost-coverage.test.js`) still expects Sonnet 5.1 at the introductory $2 input price, which ended 2026-09-01. It is an upstream bug, not a merge problem.
 
 ---
 
