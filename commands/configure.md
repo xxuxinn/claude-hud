@@ -5,9 +5,16 @@ allowed-tools: Read, Write, AskUserQuestion
 
 # Configure Claude HUD
 
-**FIRST**: Use the Read tool to load `~/.claude/plugins/claude-hud/config.json` if it exists.
+**FIRST**: Resolve the active config directory (`$CLAUDE_CONFIG_DIR` when set, otherwise
+`~/.claude`). Use the Read tool to load both of these files when they exist:
 
-Store current values and note whether config exists (determines which flow to use).
+1. `plugins/claude-hud/config.json` inside the active config directory (the writable base).
+2. `claude-hud.json` directly inside the active config directory (the manual override).
+
+Store the base and override separately. The base file alone determines which flow to use.
+For current values and previews, compute the effective config by layering the override over
+the base with nested objects merged key by key and arrays/scalars replaced. Track every key
+defined by the override so the guided flow can identify settings that it cannot change.
 
 ## Core Features (on by default)
 
@@ -18,16 +25,17 @@ enabled — toggle them by editing `config.json` directly if needed:
 - Context bar `████░░░░░░ 45%`
 
 Advanced settings such as `colors.*`, `pathLevels`, `maxWidth`, `forceMaxWidth`,
-`elementOrder`, `display.mergeGroups`, `display.timeFormat`, `display.contextValue`,
-`display.modelFormat`, `display.modelOverride`, `display.modelSource`, `display.showProvider`,
+`elementOrder`, `projectLineOrder`, `display.mergeGroups`, `display.timeFormat`, `display.contextValue`,
+`display.modelFormat`, `display.modelOverride`, `display.modelSource`, `display.effortFormat`, `display.showProvider`,
 `display.providerName`, `display.autocompactBuffer`,
-`display.autoCompactWindow`, `display.promptCacheTtlSeconds`,
+`display.autoCompactWindow`,
 `display.usageThreshold`, `display.sevenDayThreshold`,
 `display.environmentThreshold`, `display.contextWarningThreshold`,
 `display.contextCriticalThreshold`, `display.advisorOverride`,
 `display.showAuth`, `display.showAuthUser`, `display.authUserLength`, and the
-`display.externalUsage*` keys are preserved when saving but are not edited by
-this guided flow.
+`display.externalUsage*` keys, plus `jjStatus.showDirty` and
+`jjStatus.showConflicts`, are preserved when saving but are not edited by this
+guided flow.
 
 ---
 
@@ -83,12 +91,14 @@ Save as `language: "en"`, `language: "zh-Hans"`, or `language: "zh-Hant"`.
   - "Project name" - my-project path display
   - "Added directories" - +repo +shared workspace directories from /add-dir
   - "Git status" - git:(main*) branch indicator
+  - "Jujutsu status" - jj:(bookmark*) opt-in indicator
   - "Config counts" - 2 CLAUDE.md | 4 rules
   - "Token breakdown" - (in: 45k, cache: 12k)
   - "Output speed" - out: 42.1 tok/s
   - "Usage limits" - 5h: 25% | 7d: 10%
   - "Usage reset label" - show or hide the `resets in` prefix
   - "Compact usage" - 5h: 25% (1h 30m) shorter format
+  - "Model-scoped usage" - Fable ██░░ 38% per-model weekly windows
   - "Session duration" - ⏱️ 5m
   - "Session name" - fix-auth-bug (session slug or custom title)
   - "Session tokens" - Tokens 12.8M (in: 7k, out: 28k, cache: 12.8M)
@@ -139,6 +149,7 @@ If user chooses "Enter custom text", use AskUserQuestion to get their text. Save
   - "Project name" - my-project path display
   - "Added directories" - +repo +shared workspace directories from /add-dir
   - "Git status" - git:(main*) branch indicator
+  - "Jujutsu status" - jj:(bookmark*) opt-in indicator
   - "Session name" - fix-auth-bug (session slug or custom title)
   - "Session tokens" - Tokens 12.8M (in: 7k, out: 28k, cache: 12.8M)
   - "Reasoning level" - ◑ high (low/medium/high/xhigh/max, or ultracode(xhigh))
@@ -155,6 +166,7 @@ If user chooses "Enter custom text", use AskUserQuestion to get their text. Save
   - "Usage bar style" - ██░░ 25% visual bar (only if usageBarEnabled is true)
   - "Usage reset label" - show or hide the `resets in` prefix
   - "Compact usage" - 5h: 25% (1h 30m) shorter format (only if usageCompact is false)
+  - "Model-scoped usage" - Fable ██░░ 38% per-model weekly windows (only if showModelScopedUsage is true)
 
 If more than 4 items ON, show Activity items (Tools, Agents, Todos, Project, Git) first.
 Info items (Counts, Tokens, Usage, Speed, Duration) can be turned off via "Reset to Minimal" in Q4.
@@ -171,7 +183,9 @@ Info items (Counts, Tokens, Usage, Speed, Duration) can be turned off via "Reset
   - "Usage bar style" - ██░░ 25% visual bar (only if usageBarEnabled is false)
   - "Usage reset label" - show or hide the `resets in` prefix
   - "Compact usage" - 5h: 25% (1h 30m) shorter format (only if usageCompact is false)
+  - "Model-scoped usage" - Fable ██░░ 38% per-model weekly windows (only if showModelScopedUsage is false)
   - "Added directories" - +repo +shared workspace directories from /add-dir
+  - "Jujutsu status" - jj:(bookmark*) opt-in indicator
   - "Session name" - fix-auth-bug (session slug or custom title)
   - "Session tokens" - Tokens 12.8M (in: 7k, out: 28k, cache: 12.8M)
   - "Session duration" - ⏱️ 5m
@@ -245,16 +259,19 @@ If user chooses "Remove", set `display.customLine` to `""` in config.
 - Activity: Tools ON, Skills ON, MCP ON, Agents ON, Todos ON
 - Info: Added Dirs ON, Counts ON, Tokens ON, Usage ON, Reset Label ON, Cost ON, Duration ON, Session Name ON, Session Tokens ON, Reasoning Level ON, Output Style ON, Memory ON, Prompt Cache ON, CC Version ON, Compactions ON, Advisor ON
 - Git: ON (with dirty indicator, no ahead/behind)
+- Jujutsu: ON (opted in, with dirty and conflict indicators)
 
 **Essential** (activity + git):
 - Activity: Tools ON, Agents ON, Todos ON
 - Info: Counts OFF, Tokens OFF, Usage OFF, Duration ON, Session Name OFF, Session Tokens OFF
 - Git: ON (with dirty indicator)
+- Jujutsu: OFF
 
 **Minimal** (core only — this is the default):
 - Activity: Tools OFF, Agents OFF, Todos OFF
 - Info: Counts OFF, Tokens OFF, Usage OFF, Duration OFF, Session Name OFF, Session Tokens OFF
 - Git: ON (with dirty indicator)
+- Jujutsu: OFF
 
 ---
 
@@ -303,16 +320,19 @@ If user chooses "Remove", set `display.customLine` to `""` in config.
 | Project name | `display.showProject` |
 | Added directories | `display.showAddedDirs` (layout via `display.addedDirsLayout`) |
 | Git status | `gitStatus.enabled` |
+| Jujutsu status | `jjStatus.enabled` |
 | Config counts | `display.showConfigCounts` |
 | Token breakdown | `display.showTokenBreakdown` |
 | Output speed | `display.showSpeed` |
 | Session cost | `display.showCost` |
 | Routed provider cost | `display.showRoutedCost` |
+| Daily cost | `display.showDailyCost` |
 | Usage limits | `display.showUsage` |
 | Usage bar style | `display.usageBarEnabled` |
 | Compact usage | `display.usageCompact` |
 | Usage value | `display.usageValue` |
 | Usage reset label | `display.showResetLabel` |
+| Model-scoped usage | `display.showModelScopedUsage` (per-model weekly windows, e.g. Fable) |
 | Session name | `display.showSessionName` |
 | Auth method | `display.showAuth` (plan label, e.g. "Claude Max 20x", own segment at end of first line) |
 | Auth user | `display.showAuthUser` (login account, truncated to `display.authUserLength` chars, 0 = full) |
@@ -324,7 +344,7 @@ If user chooses "Remove", set `display.customLine` to `""` in config.
 | Reasoning level | `display.showEffortLevel` |
 | Output style | `display.showOutputStyle` |
 | Memory usage | `display.showMemoryUsage` |
-| Prompt cache | `display.showPromptCache` (TTL via `display.promptCacheTtlSeconds`) |
+| Prompt cache | `display.showPromptCache` (transcript tier wins; `display.promptCacheTtlSeconds` is the fallback) |
 | Claude Code version | `display.showClaudeCodeVersion` |
 | Advisor model | `display.showAdvisor` (override via `display.advisorOverride`) |
 | Custom line | `display.customLine` |
@@ -377,6 +397,10 @@ Set `display.usageValue: "remaining"` manually to show remaining quota percentag
 - User cancels (Esc) → say "Configuration cancelled."
 - No changes from current config → say "No changes needed - config unchanged."
 
+If the user edits a key also defined by the manual override, warn before confirmation that the
+saved base value will remain shadowed. Show both the value being written to the base and the
+effective value that will still come from the override. Never edit or delete the override.
+
 **Show preview before saving:**
 
 1. **Summary of changes:**
@@ -410,7 +434,7 @@ Context ████░░░░░ 45% │ Usage ██░░░░░░░░
 
 ## Write Configuration
 
-Write to `~/.claude/plugins/claude-hud/config.json`.
+Write to `plugins/claude-hud/config.json` inside the active config directory.
 
 Merge with existing config, preserving:
 - `pathLevels` (not in configure flow)
@@ -421,6 +445,26 @@ Merge with existing config, preserving:
 - `colors` (advanced manual palette overrides)
 
 **Migration note**: Old configs with `layout: "default"` or `layout: "separators"` are automatically migrated to the new `lineLayout` + `showSeparators` format on load.
+
+### Per-config-directory overrides
+
+`~/.claude/claude-hud.json` (more precisely `$CLAUDE_CONFIG_DIR/claude-hud.json`) is an
+optional overlay applied on top of `config.json` at load time. It uses the same shape,
+only needs the keys it changes, and nested sections merge key by key:
+
+For example, `~/.config/claude/work/claude-hud.json` can contain:
+
+```json
+{ "display": { "customLine": "Work Team" } }
+```
+
+This exists for users who run several `CLAUDE_CONFIG_DIR`s and symlink `plugins/` to one
+shared location - `plugins/claude-hud/config.json` is then the same physical file for every
+directory, while this overlay stays per-directory.
+
+Never write this file from the guided flow, and leave it untouched when it exists; it is a
+manual escape hatch. Values in it win over anything written to `config.json`, so if a saved
+setting appears not to take effect, check whether the overlay redefines it.
 
 ---
 

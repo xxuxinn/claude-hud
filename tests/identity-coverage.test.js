@@ -36,7 +36,7 @@ function baseContext() {
       pathLevels: 1,
       elementOrder: ['project', 'context', 'usage'],
       gitStatus: { enabled: true, showDirty: true, showAheadBehind: false, showFileStats: false, branchOverflow: 'truncate', pushWarningThreshold: 0, pushCriticalThreshold: 0 },
-      display: { showModel: true, showProject: true, showContextBar: true, contextValue: 'percent', showConfigCounts: true, showCost: false, showDuration: true, showSpeed: false, showTokenBreakdown: true, showUsage: true, usageValue: 'percent', usageBarEnabled: false, showResetLabel: true, showTools: true, showSkills: false, showMcp: false, showAgents: true, showTodos: true, showSessionTokens: false, showSessionName: false, showClaudeCodeVersion: false, showMemoryUsage: false, showPromptCache: false, promptCacheTtlSeconds: 300, showOutputStyle: false, mergeGroups: [['context', 'usage']], autocompactBuffer: 'enabled', usageThreshold: 0, sevenDayThreshold: 80, environmentThreshold: 0, customLine: '' },
+      display: { showModel: true, showProject: true, showContextBar: true, contextValue: 'percent', showConfigCounts: true, showCost: false, showDuration: true, showSpeed: false, showTokenBreakdown: true, showUsage: true, usageValue: 'percent', usageBarEnabled: false, showResetLabel: true, showTools: true, showSkills: false, showMcp: false, showAgents: true, showTodos: true, showSessionTokens: false, showSessionName: false, showClaudeCodeVersion: false, showMemoryUsage: false, showPromptCache: false, showOutputStyle: false, mergeGroups: [['context', 'usage']], autocompactBuffer: 'enabled', usageThreshold: 0, sevenDayThreshold: 80, environmentThreshold: 0, customLine: '' },
       colors: {
         context: 'green',
         usage: 'brightBlue',
@@ -145,13 +145,15 @@ test('renderIdentityLine uses autoCompactWindow for token display', () => {
   assert.ok(line.includes('10k/100k'));
 });
 
-test('renderIdentityLine supports alignLabels parameter', () => {
+test('renderIdentityLine supports progress label alignment options', () => {
   const ctx = baseContext();
   const lineNoAlign = stripAnsi(renderIdentityLine(ctx, false));
   const lineAlign = stripAnsi(renderIdentityLine(ctx, true));
+  const lineAlignOptions = stripAnsi(renderIdentityLine(ctx, { align: true }));
   // Both should contain Context label
   assert.ok(lineNoAlign.includes('Context'));
   assert.ok(lineAlign.includes('Context'));
+  assert.equal(lineAlignOptions, lineAlign);
 });
 
 test('renderIdentityLine disables autocompact buffer when set to disabled', () => {

@@ -1,10 +1,15 @@
-import type { StdinData, UsageData, TranscriptData } from './types.js';
+import type { ScopedUsageWindow, StdinData, UsageData, TranscriptData } from './types.js';
 import type { ModelFormatMode } from './config.js';
 import { AUTOCOMPACT_BUFFER_PERCENT } from './constants.js';
 import { createDebug } from './debug.js';
 import { sanitizeTranscriptModel } from './model-source.js';
+import { sanitizeDisplayText } from './utils/sanitize.js';
 
 const debug = createDebug('stdin');
+
+const SCOPED_USAGE_MAX_WINDOWS = 8;
+const SCOPED_USAGE_LABEL_MAX_LENGTH = 64;
+const SCOPED_USAGE_RESET_MAX_LENGTH = 64;
 
 type StdinStream = Pick<NodeJS.ReadStream, 'setEncoding' | 'on' | 'off' | 'pause'> & {
   isTTY?: boolean;
@@ -308,6 +313,26 @@ export function isVertexModelId(modelId?: string): boolean {
 
 const ENTERPRISE_MODEL_IDS = new Set(['opusplan', 'sonnetplan', 'haikuplan']);
 
+const MINIMAX_ANTHROPIC_ENDPOINTS = new Set([
+  'https://api.minimax.io/anthropic',
+  'https://api.minimaxi.com/anthropic',
+]);
+
+function isMiniMaxAnthropicEndpoint(env: NodeJS.ProcessEnv = process.env): boolean {
+  const baseUrl = env.ANTHROPIC_BASE_URL?.trim() || env.ANTHROPIC_API_BASE_URL?.trim();
+  if (!baseUrl) {
+    return false;
+  }
+
+  try {
+    const url = new URL(baseUrl);
+    const normalized = `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+    return MINIMAX_ANTHROPIC_ENDPOINTS.has(normalized);
+  } catch {
+    return false;
+  }
+}
+
 export function isEnterpriseModelId(modelId?: string): boolean {
   if (!modelId) {
     return false;
@@ -321,6 +346,9 @@ export function getProviderLabel(stdin: StdinData): string | null {
   }
   if (process.env.CLAUDE_CODE_USE_VERTEX === '1') {
     return 'Vertex';
+  }
+  if (isMiniMaxAnthropicEndpoint()) {
+    return 'MiniMax';
   }
   if (isEnterpriseModelId(stdin.model?.id)) {
     return 'Enterprise';
@@ -356,7 +384,9 @@ export function getUsageFromStdin(stdin: StdinData): UsageData | null {
 
   const fiveHour = parseRateLimitPercent(rateLimits.five_hour?.used_percentage);
   const sevenDay = parseRateLimitPercent(rateLimits.seven_day?.used_percentage);
-  if (fiveHour === null && sevenDay === null) {
+  const hasScopedWindows = Array.isArray(rateLimits.model_scoped);
+  const scopedWindows = parseScopedWindows(rateLimits.model_scoped);
+  if (fiveHour === null && sevenDay === null && !hasScopedWindows) {
     return null;
   }
 
@@ -365,7 +395,52 @@ export function getUsageFromStdin(stdin: StdinData): UsageData | null {
     sevenDay,
     fiveHourResetAt: parseRateLimitResetAt(rateLimits.five_hour?.resets_at),
     sevenDayResetAt: parseRateLimitResetAt(rateLimits.seven_day?.resets_at),
+    ...(hasScopedWindows && { scopedWindows }),
   };
+}
+
+/**
+ * Parses `rate_limits.model_scoped` (model-scoped weekly windows, e.g. Fable).
+ * The upstream schema carries `utilization` on the same 0-100 scale used by
+ * the generic rate-limit windows. Malformed entries are dropped, and both the
+ * retained entry count and label size are bounded because stdin is untrusted.
+ */
+export function parseScopedWindows(modelScoped: unknown): ScopedUsageWindow[] {
+  if (!Array.isArray(modelScoped)) {
+    return [];
+  }
+  const windows: ScopedUsageWindow[] = [];
+  for (const raw of modelScoped) {
+    if (windows.length >= SCOPED_USAGE_MAX_WINDOWS) {
+      break;
+    }
+    const entry = raw as { display_name?: unknown; utilization?: unknown; resets_at?: unknown } | null;
+    const label = typeof entry?.display_name === 'string'
+      ? sanitizeDisplayText(entry.display_name).trim().slice(0, SCOPED_USAGE_LABEL_MAX_LENGTH)
+      : '';
+    if (!label) {
+      continue;
+    }
+    const utilization = entry?.utilization;
+    const percent = utilization === null
+      ? null
+      : parseRateLimitPercent(utilization as number | undefined);
+    if (utilization !== null && percent === null) {
+      continue;
+    }
+    const resetAtRaw = entry?.resets_at;
+    const resetAt = typeof resetAtRaw === 'string'
+      && resetAtRaw.length <= SCOPED_USAGE_RESET_MAX_LENGTH
+      && !Number.isNaN(Date.parse(resetAtRaw))
+      ? new Date(resetAtRaw)
+      : null;
+    windows.push({
+      label,
+      percent,
+      resetAt,
+    });
+  }
+  return windows;
 }
 
 /**

@@ -22,6 +22,7 @@ import {
 import { dim, RESET } from './colors.js';
 import { getTerminalWidth, UNKNOWN_TERMINAL_WIDTH } from '../utils/terminal.js';
 import { codePointCellWidth, isCjkAmbiguousWide } from './width.js';
+import type { ProgressLabelOptions } from './lines/label-align.js';
 
 // eslint-disable-next-line no-control-regex
 const ANSI_ESCAPE_PATTERN = /^(?:\x1b\[[0-9;]*m|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\))/;
@@ -85,7 +86,7 @@ function graphemeWidth(grapheme: string, ambiguousWide: boolean): number {
   let hasVisibleBase = false;
   let width = 0;
   for (const char of Array.from(grapheme)) {
-    if (/^\p{Mark}$/u.test(char) || char === '\u200D' || char === '\uFE0F') {
+    if (/^\p{Mark}$/u.test(char) || char === '\u200D' || char === '\uFE0E' || char === '\uFE0F') {
       continue;
     }
     hasVisibleBase = true;
@@ -344,6 +345,43 @@ function collectMergeSequence(
   return sequence;
 }
 
+// Treat the first configured element as the start of an order-preserving
+// right zone, padding the gap before it with spaces. Returns null when alignment does
+// not apply — no configured elements on either side, or not enough room for
+// at least one space between the two halves — so the caller falls back to the
+// normal separator join.
+function alignGroupRight(
+  entries: Array<{ element: HudElement; line: string }>,
+  rightAlign: Set<HudElement>,
+  terminalWidth: number,
+): string | null {
+  if (rightAlign.size === 0) {
+    return null;
+  }
+
+  const splitIndex = entries.findIndex(({ element }) => rightAlign.has(element));
+  if (splitIndex <= 0) {
+    return null;
+  }
+
+  const leftEntries = entries.slice(0, splitIndex);
+  const rightEntries = entries.slice(splitIndex);
+
+  if (leftEntries.length === 0 || rightEntries.length === 0) {
+    return null;
+  }
+
+  const leftText = leftEntries.map(({ line }) => line).join(' │ ');
+  const rightText = rightEntries.map(({ line }) => line).join(' │ ');
+  const gap = terminalWidth - visualLength(leftText) - visualLength(rightText);
+
+  if (gap < 1) {
+    return null;
+  }
+
+  return `${leftText}${' '.repeat(gap)}${rightText}`;
+}
+
 function collectActivityLines(ctx: RenderContext): string[] {
   const activityLines: string[] = [];
   const display = ctx.config?.display;
@@ -389,10 +427,9 @@ function collectActivityLines(ctx: RenderContext): string[] {
 function renderElementLine(
   ctx: RenderContext,
   element: HudElement,
-  options?: { alignProgressLabels?: boolean },
+  labelOptions: ProgressLabelOptions = {},
 ): string | null {
   const display = ctx.config?.display;
-  const alignProgressLabels = options?.alignProgressLabels ?? false;
 
   switch (element) {
     case 'project':
@@ -400,13 +437,13 @@ function renderElementLine(
     case 'addedDirs':
       return renderAddedDirsLine(ctx);
     case 'context':
-      return renderIdentityLine(ctx, alignProgressLabels);
+      return renderIdentityLine(ctx, labelOptions);
     case 'usage':
-      return renderUsageLine(ctx, alignProgressLabels);
+      return renderUsageLine(ctx, labelOptions);
     case 'promptCache':
       return renderPromptCacheLine(ctx);
     case 'memory':
-      return renderMemoryLine(ctx);
+      return renderMemoryLine(ctx, labelOptions);
     case 'environment':
       return renderEnvironmentLine(ctx);
     case 'tools':
@@ -439,6 +476,16 @@ function renderExpanded(ctx: RenderContext, terminalWidth: number | null = null)
   const elementOrder = ctx.config?.elementOrder ?? DEFAULT_ELEMENT_ORDER;
   const mergeGroups = ctx.config?.display?.mergeGroups ?? DEFAULT_MERGE_GROUPS;
   const mergeGroupLookup = buildMergeGroupLookup(mergeGroups);
+  const rightAlign = new Set<HudElement>(ctx.config?.display?.rightAlign ?? []);
+  const memoryLineVisible = elementOrder.includes('memory')
+    && ctx.config?.display?.showMemoryUsage === true
+    && ctx.memoryUsage != null;
+  const otherProgressLineVisible = elementOrder.includes('context')
+    || (elementOrder.includes('usage') && renderUsageLine(ctx) != null);
+  const separateMemoryLabelOptions: ProgressLabelOptions | undefined = memoryLineVisible
+    && otherProgressLineVisible
+    ? { align: true, includeMemoryInWidth: true }
+    : undefined;
   const seen = new Set<HudElement>();
   const lines: Array<{ line: string; isActivity: boolean }> = [];
 
@@ -458,10 +505,17 @@ function renderExpanded(ctx: RenderContext, terminalWidth: number | null = null)
           seen.add(groupedElement);
         }
 
+        // A memory label only needs to influence a group's padding when its
+        // progress bar is rendered on a different row. If memory is part of
+        // this combined row, keep the candidate compact and align only if the
+        // row is later forced to stack.
+        const groupLabelOptions = memoryLineVisible && !mergeSequence.includes('memory')
+          ? separateMemoryLabelOptions
+          : undefined;
         const renderedGroupLines = mergeSequence
           .map(groupedElement => ({
             element: groupedElement,
-            line: renderElementLine(ctx, groupedElement),
+            line: renderElementLine(ctx, groupedElement, groupLabelOptions),
           }))
           .filter(
             (entry): entry is { element: HudElement; line: string } =>
@@ -471,17 +525,23 @@ function renderExpanded(ctx: RenderContext, terminalWidth: number | null = null)
         if (renderedGroupLines.length > 1) {
           const combinedLine = renderedGroupLines.map(({ line }) => line).join(' │ ');
           const widthIsReal = terminalWidth !== UNKNOWN_TERMINAL_WIDTH;
+          // The fit check uses the unpadded join: right-alignment only inserts
+          // spaces, so it never changes whether the content itself fits.
           const canCombine = !widthIsReal || visualLength(combinedLine) <= terminalWidth;
+          const alignedLine = widthIsReal
+            ? alignGroupRight(renderedGroupLines, rightAlign, terminalWidth)
+            : null;
 
           if (canCombine) {
             lines.push({
-              line: combinedLine,
+              line: alignedLine ?? combinedLine,
               isActivity: renderedGroupLines.some(({ element: groupedElement }) => ACTIVITY_ELEMENTS.has(groupedElement)),
             });
           } else {
             for (const { element: groupedElement, line } of renderedGroupLines) {
               const stackedLine = renderElementLine(ctx, groupedElement, {
-                alignProgressLabels: true,
+                align: true,
+                includeMemoryInWidth: memoryLineVisible,
               }) ?? line;
               lines.push({
                 line: stackedLine,
@@ -491,8 +551,13 @@ function renderExpanded(ctx: RenderContext, terminalWidth: number | null = null)
           }
         } else if (renderedGroupLines.length === 1) {
           const [{ element: groupedElement, line }] = renderedGroupLines;
+          const separateLine = renderElementLine(
+            ctx,
+            groupedElement,
+            separateMemoryLabelOptions,
+          ) ?? line;
           lines.push({
-            line,
+            line: separateLine,
             isActivity: ACTIVITY_ELEMENTS.has(groupedElement),
           });
         }
@@ -503,7 +568,7 @@ function renderExpanded(ctx: RenderContext, terminalWidth: number | null = null)
 
     seen.add(element);
 
-    const line = renderElementLine(ctx, element);
+    const line = renderElementLine(ctx, element, separateMemoryLabelOptions);
     if (!line) {
       continue;
     }

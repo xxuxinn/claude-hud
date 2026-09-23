@@ -2,6 +2,7 @@ import type { HudConfig } from './config.js';
 import type { GitStatus } from './git.js';
 import type { AuthInfo } from './auth.js';
 export interface StdinData {
+    session_id?: string;
     transcript_path?: string;
     cwd?: string;
     workspace?: {
@@ -43,6 +44,17 @@ export interface StdinData {
             used_percentage?: number | null;
             resets_at?: number | null;
         } | null;
+        /**
+         * Model-scoped weekly windows (e.g. the Fable weekly quota shown on /usage).
+         * Additive field — Claude Code's internal status schema defines it as
+         * { display_name, utilization (0-100 percent), resets_at (ISO-8601) } and only
+         * includes it when the server returns per-model windows.
+         */
+        model_scoped?: Array<{
+            display_name?: string | null;
+            utilization?: number | null;
+            resets_at?: string | null;
+        }> | null;
     } | null;
     effort?: string | {
         level?: string | null;
@@ -77,6 +89,14 @@ export interface UsageData {
     fiveHourResetAt: Date | null;
     sevenDayResetAt: Date | null;
     balanceLabel?: string | null;
+    /** Model-scoped weekly windows (e.g. Fable) from stdin rate_limits.model_scoped. */
+    scopedWindows?: ScopedUsageWindow[];
+}
+/** One model-scoped weekly quota window (e.g. label "Fable", used percent 0-100). */
+export interface ScopedUsageWindow {
+    label: string;
+    percent: number | null;
+    resetAt: Date | null;
 }
 export interface ExternalUsageSnapshot {
     five_hour?: {
@@ -89,6 +109,16 @@ export interface ExternalUsageSnapshot {
     } | null;
     updated_at?: string | number | null;
     balance_label?: string | null;
+    /**
+     * Model-scoped weekly windows (e.g. Fable). Mirrors the stdin
+     * `rate_limits.model_scoped` schema so external feeders can pass through
+     * the same shape Claude Code emits (e.g. from a get_usage response).
+     */
+    model_scoped?: Array<{
+        display_name?: string | null;
+        utilization?: number | null;
+        resets_at?: string | null;
+    }> | null;
 }
 export interface MemoryInfo {
     totalBytes: number;
@@ -108,11 +138,19 @@ export interface TranscriptData {
     tools: ToolEntry[];
     skills: string[];
     mcpServers: string[];
+    /**
+     * MCP servers whose latest observed tool result is an error, derived
+     * from `mcp__<server>__<tool>` results carrying is_error. Distinct from
+     * mcpServers, which is a plain activity list.
+     */
+    mcpErrors: string[];
     agents: AgentEntry[];
     todos: TodoItem[];
     sessionStart?: Date;
     sessionName?: string;
     lastAssistantResponseAt?: Date;
+    promptCacheAnchorAt?: Date;
+    promptCacheTtlSeconds?: number;
     sessionTokens?: SessionTokenUsage;
     lastCompactBoundaryAt?: Date;
     lastCompactPostTokens?: number;
